@@ -1,0 +1,1695 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Circuit DNA</title>
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <!-- jsDelivr: cdnjs Chart builds can hit Chromium ERR_BLOCKED_BY_ORB when loaded cross-origin; same library versions. -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg-page: #0e1016;
+        --bg-panel: #181b24;
+        --bg-well: #14161d;
+        --bg-soft: #1e222c;
+        --border: #2e3440;
+        --border-strong: #3d4654;
+        --text: #eceef2;
+        --muted: #8b93a6;
+        --accent: #e8b84a;
+        --accent-hover: #f0ca6a;
+        --accent-muted: rgba(232, 184, 74, 0.22);
+        --ok: #7d9a7e;
+        --ok-muted: rgba(125, 154, 126, 0.2);
+        --danger: #e85d6f;
+        --danger-bg: rgba(232, 93, 111, 0.14);
+        --danger-text: #fecdd3;
+        --font-ui: "Fira Sans", -apple-system, system-ui, sans-serif;
+        --font-data: "Fira Code", ui-monospace, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: var(--font-ui);
+        background: var(--bg-page);
+        color: var(--text);
+      }
+
+      .app {
+        max-width: 1480px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .header {
+        margin-bottom: 18px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .title-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      .header-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 32px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+
+      .subtitle {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.45;
+        max-width: 42rem;
+      }
+
+      button,
+      select {
+        border: 1px solid var(--border);
+        background: var(--bg-soft);
+        color: var(--text);
+        border-radius: 8px;
+        height: 38px;
+        padding: 0 12px;
+        font-size: 13px;
+        font-family: var(--font-ui);
+      }
+
+      button {
+        cursor: pointer;
+        transition:
+          border-color 0.18s ease,
+          background-color 0.18s ease,
+          color 0.18s ease;
+      }
+
+      button:hover {
+        border-color: var(--accent);
+        background: rgba(232, 184, 74, 0.08);
+      }
+
+      button:focus-visible,
+      select:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .sync-driver-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--muted);
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .sync-driver-label input {
+        accent-color: var(--accent);
+        width: 16px;
+        height: 16px;
+      }
+
+      .mode-toggle {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .mode-toggle button {
+        border: 0;
+        border-radius: 0;
+        min-width: 120px;
+      }
+
+      .mode-toggle button:hover {
+        background: rgba(232, 184, 74, 0.06);
+      }
+
+      .mode-toggle button.active {
+        background: var(--accent-muted);
+        color: var(--accent-hover);
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 1fr 340px 1fr;
+        gap: 18px;
+      }
+
+      .lane-label {
+        margin: 0 0 10px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .lane-label-center {
+        justify-content: center;
+      }
+
+      .lane-tag {
+        font-family: var(--font-data);
+        font-size: 12px;
+        letter-spacing: 0;
+        color: var(--accent);
+        border: 1px solid var(--border-strong);
+        border-radius: 4px;
+        padding: 2px 6px;
+        background: var(--bg-well);
+      }
+
+      .panel,
+      .middle,
+      .grid-panel {
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+      }
+
+      .panel {
+        padding: 14px;
+      }
+
+      .selectors {
+        display: grid;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .selector-group {
+        display: grid;
+        gap: 4px;
+      }
+
+      .selector-group label {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .chart-wrap {
+        height: 320px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--bg-well);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .chart-wrap canvas {
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      .skeleton-ring {
+        width: 180px;
+        height: 180px;
+        border-radius: 999px;
+        background:
+          conic-gradient(
+            from 90deg,
+            rgba(232, 184, 74, 0.06),
+            rgba(232, 184, 74, 0.92),
+            rgba(232, 184, 74, 0.06)
+          );
+        -webkit-mask: radial-gradient(circle 68px at center, transparent 95%, #000 100%);
+        mask: radial-gradient(circle 68px at center, transparent 95%, #000 100%);
+        animation: pulseRing 1.15s ease-in-out infinite;
+      }
+
+      @keyframes pulseRing {
+        0% {
+          transform: scale(0.94);
+          opacity: 0.62;
+        }
+        50% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(0.94);
+          opacity: 0.62;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .skeleton-ring {
+          animation: none;
+          opacity: 0.85;
+        }
+      }
+
+      .panel-status {
+        position: absolute;
+        bottom: 11px;
+        left: 11px;
+        right: 11px;
+        text-align: center;
+        font-size: 13px;
+        color: var(--muted);
+        padding: 8px;
+        border-radius: 8px;
+        background: rgba(14, 16, 22, 0.72);
+        font-family: var(--font-ui);
+      }
+
+      .panel-status.error {
+        color: var(--danger-text);
+        background: var(--danger-bg);
+      }
+
+      .stats {
+        margin-top: 11px;
+        display: grid;
+        gap: 3px;
+        min-height: 67px;
+      }
+
+      .stats .name {
+        font-size: 17px;
+        font-weight: 700;
+        font-family: var(--font-ui);
+      }
+
+      .stats .meta {
+        color: var(--muted);
+        font-size: 13px;
+        font-family: var(--font-data);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .middle {
+        padding: 14px;
+        display: grid;
+        grid-template-rows: auto auto auto 1fr;
+        gap: 10px;
+        min-height: 0;
+      }
+
+      .diff-chart-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-height: 280px;
+        flex: 1;
+        min-width: 0;
+      }
+
+      .diff-chart {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        background: var(--bg-well);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+        flex: 1;
+        min-height: 260px;
+      }
+
+      .diff-peaks {
+        text-align: center;
+        line-height: 1.35;
+        min-height: 2.7em;
+        font-family: var(--font-data);
+        font-size: 12px;
+      }
+
+      .readout-card {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px 14px;
+        background: var(--bg-well);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+      }
+
+      .similarity-label {
+        font-size: 11px;
+        color: var(--muted);
+        text-align: center;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        font-weight: 600;
+      }
+
+      .similarity-value {
+        text-align: center;
+        font-size: 48px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        font-family: var(--font-data);
+        font-variant-numeric: tabular-nums;
+        line-height: 1.1;
+        margin-top: 6px;
+      }
+
+      .diff-caption {
+        text-align: center;
+        line-height: 1.35;
+      }
+
+      .diff-chart svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      .grid-panel {
+        margin-top: 16px;
+        padding: 12px;
+      }
+
+      .grid-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .grid-head h2 {
+        margin: 0;
+        font-size: 17px;
+        font-weight: 600;
+      }
+
+      .table-wrap {
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 860px;
+      }
+
+      thead {
+        background: var(--bg-soft);
+      }
+
+      th,
+      td {
+        padding: 10px 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+      }
+
+      td {
+        font-variant-numeric: tabular-nums;
+      }
+
+      th button {
+        all: unset;
+        cursor: pointer;
+        color: var(--text);
+        font-family: var(--font-ui);
+      }
+
+      th button:hover {
+        color: var(--accent-hover);
+      }
+
+      th button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: 2px;
+      }
+
+      tbody tr {
+        cursor: pointer;
+        transition:
+          background 0.18s ease,
+          box-shadow 0.18s ease;
+      }
+
+      tbody tr:hover {
+        background: rgba(232, 184, 74, 0.06);
+        box-shadow: inset 3px 0 0 var(--accent);
+      }
+
+      .pill {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: var(--ok-muted);
+        color: #b8d4b9;
+        font-family: var(--font-data);
+        font-size: 12px;
+      }
+
+      .helper {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .panel-retry {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 3;
+        height: 32px;
+        padding: 0 10px;
+        font-size: 12px;
+        background: rgba(14, 16, 22, 0.88);
+        border-color: var(--accent);
+        color: var(--accent-hover);
+      }
+
+      .panel-retry:hover {
+        background: rgba(232, 184, 74, 0.12);
+      }
+
+      .debug-log {
+        margin-top: 14px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--bg-well);
+        color: var(--text);
+        font-family: var(--font-data);
+        font-size: 11px;
+        line-height: 1.45;
+        max-height: 220px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+
+      @media (max-width: 1200px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <div class="title-row">
+          <div>
+            <h1>Circuit DNA</h1>
+            <p class="subtitle">
+              A throttle fingerprint for every circuit: 360 degrees of how a lap breathes.
+            </p>
+          </div>
+          <div class="header-actions">
+            <label class="sync-driver-label">
+              <input type="checkbox" id="sync-driver" />
+              Sync driver (secondary follows primary)
+            </label>
+            <div class="mode-toggle">
+              <button type="button" id="primary-left-btn" class="active">Primary: Left</button>
+              <button type="button" id="primary-right-btn">Primary: Right</button>
+            </div>
+            <button type="button" id="swap-btn">Swap panels</button>
+            <button type="button" id="shuffle-btn">Shuffle Circuits</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="layout">
+        <article class="panel" id="left-panel">
+          <p class="lane-label"><span class="lane-tag">A</span> Fingerprint</p>
+          <div class="selectors">
+            <div class="selector-group">
+              <label for="left-session">2024 Qualifying Session</label>
+              <select id="left-session"></select>
+            </div>
+            <div class="selector-group">
+              <label for="left-driver">Driver</label>
+              <select id="left-driver"></select>
+            </div>
+          </div>
+          <div class="chart-wrap" id="left-chart-wrap">
+            <button type="button" class="panel-retry" id="left-retry-btn" hidden>
+              Retry
+            </button>
+            <div class="skeleton-ring"></div>
+            <div class="panel-status">Loading telemetry...</div>
+            <canvas id="left-chart"></canvas>
+          </div>
+          <div class="stats">
+            <div class="name" id="left-circuit">--</div>
+            <div class="meta" id="left-lap">Lap: --</div>
+            <div class="meta" id="left-speed">Top speed: --</div>
+          </div>
+        </article>
+
+        <article class="middle">
+          <p class="lane-label lane-label-center"><span class="lane-tag">Δ</span> Compare</p>
+          <div class="readout-card">
+            <div class="similarity-label">Cosine Similarity</div>
+            <div class="similarity-value" id="similarity-value">--</div>
+          </div>
+          <div class="helper diff-caption">
+            Difference map — radius = throttle delta on a 0–100 scale (|left − right| per degree).
+          </div>
+          <div class="diff-chart-wrap">
+            <div class="diff-chart" id="diff-chart"></div>
+            <div class="diff-peaks helper" id="diff-peaks"></div>
+          </div>
+        </article>
+
+        <article class="panel" id="right-panel">
+          <p class="lane-label"><span class="lane-tag">B</span> Fingerprint</p>
+          <div class="selectors">
+            <div class="selector-group">
+              <label for="right-session">2024 Qualifying Session</label>
+              <select id="right-session"></select>
+            </div>
+            <div class="selector-group">
+              <label for="right-driver">Driver</label>
+              <select id="right-driver"></select>
+            </div>
+          </div>
+          <div class="chart-wrap" id="right-chart-wrap">
+            <button type="button" class="panel-retry" id="right-retry-btn" hidden>
+              Retry
+            </button>
+            <div class="skeleton-ring"></div>
+            <div class="panel-status">Loading telemetry...</div>
+            <canvas id="right-chart"></canvas>
+          </div>
+          <div class="stats">
+            <div class="name" id="right-circuit">--</div>
+            <div class="meta" id="right-lap">Lap: --</div>
+            <div class="meta" id="right-speed">Top speed: --</div>
+          </div>
+        </article>
+      </section>
+
+      <section class="grid-panel">
+        <div class="grid-head">
+          <h2>Loaded Fingerprints</h2>
+          <div class="helper" id="grid-helper">Click a row to load into secondary panel.</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><button data-sort="similarity">Similarity</button></th>
+                <th><button data-sort="circuit">Circuit</button></th>
+                <th><button data-sort="driver">Driver</button></th>
+                <th><button data-sort="lapTime">Lap Time</button></th>
+                <th><button data-sort="topSpeed">Top Speed</button></th>
+                <th>Session</th>
+              </tr>
+            </thead>
+            <tbody id="loaded-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <pre id="debug-log" class="debug-log" hidden aria-live="polite"></pre>
+    </div>
+
+    <script>
+      (function () {
+        /** ---------- Http ---------- */
+        const API_BASE = "https://api.openf1.org/v1";
+        const SAMPLE_POINTS = 360;
+        /** Fallback fingerprint stroke when team_colour missing — bench accent family */
+        const ACCENT_FALLBACK = "#D4A24C";
+        const DEFAULT_FETCH_MS = 20000;
+
+        /** Serialize OpenF1 calls to avoid 429 bursts when both panels load in parallel. */
+        let apiGate = Promise.resolve();
+        function enqueueOpenF1(task) {
+          const run = apiGate.then(task);
+          apiGate = run.catch(() => {});
+          return run;
+        }
+
+        function isDebugMode() {
+          return new URLSearchParams(window.location.search).get("debug") === "1";
+        }
+
+        function truncateUrl(url, maxLen = 140) {
+          if (!url || url.length <= maxLen) return url;
+          return `${url.slice(0, maxLen)}…`;
+        }
+
+        const debugEntries = [];
+
+        function appendDebugEntry(entry) {
+          if (!isDebugMode()) return;
+          debugEntries.unshift(entry);
+          while (debugEntries.length > 18) debugEntries.pop();
+          const el = document.getElementById("debug-log");
+          if (!el) return;
+          el.hidden = false;
+          el.textContent = debugEntries.map((row) => JSON.stringify(row)).join("\n---\n");
+        }
+
+        async function fetchWithTimeout(url, timeoutMs = DEFAULT_FETCH_MS) {
+          const controller = new AbortController();
+          const timerId = setTimeout(() => controller.abort(), timeoutMs);
+          const started = performance.now();
+          try {
+            const response = await fetch(url, { signal: controller.signal });
+            const elapsed = Math.round(performance.now() - started);
+            appendDebugEntry({
+              url: truncateUrl(url),
+              status: response.status,
+              elapsed_ms: elapsed,
+              ok: response.ok,
+            });
+            return response;
+          } catch (err) {
+            const elapsed = Math.round(performance.now() - started);
+            appendDebugEntry({
+              url: truncateUrl(url),
+              elapsed_ms: elapsed,
+              error: `${err.name}: ${err.message}`,
+            });
+            if (err.name === "AbortError") {
+              const timeoutErr = new Error("Request timed out — check network or retry.");
+              timeoutErr.code = "TIMEOUT";
+              throw timeoutErr;
+            }
+            throw err;
+          } finally {
+            clearTimeout(timerId);
+          }
+        }
+
+        /** ---------- OpenF1 + state ---------- */
+        const state = {
+          sessions: [],
+          driversBySession: new Map(),
+          dnaByPair: new Map(),
+          loadedRecords: [],
+          sortBy: "similarity",
+          sortDir: "desc",
+          primaryPanel: "left",
+          panels: {
+            left: {
+              sessionKey: null,
+              driverNumber: null,
+              data: null,
+              chart: null,
+              loading: false,
+              elapsedTimer: null,
+              loadStage: null,
+              pipelineStartMs: null,
+            },
+            right: {
+              sessionKey: null,
+              driverNumber: null,
+              data: null,
+              chart: null,
+              loading: false,
+              elapsedTimer: null,
+              loadStage: null,
+              pipelineStartMs: null,
+            },
+          },
+        };
+
+        const dom = {
+          session: {
+            left: document.getElementById("left-session"),
+            right: document.getElementById("right-session"),
+          },
+          driver: {
+            left: document.getElementById("left-driver"),
+            right: document.getElementById("right-driver"),
+          },
+          chartWrap: {
+            left: document.getElementById("left-chart-wrap"),
+            right: document.getElementById("right-chart-wrap"),
+          },
+          canvas: {
+            left: document.getElementById("left-chart"),
+            right: document.getElementById("right-chart"),
+          },
+          circuit: {
+            left: document.getElementById("left-circuit"),
+            right: document.getElementById("right-circuit"),
+          },
+          lap: {
+            left: document.getElementById("left-lap"),
+            right: document.getElementById("right-lap"),
+          },
+          speed: {
+            left: document.getElementById("left-speed"),
+            right: document.getElementById("right-speed"),
+          },
+          similarityValue: document.getElementById("similarity-value"),
+          diffChart: document.getElementById("diff-chart"),
+          diffPeaks: document.getElementById("diff-peaks"),
+          tableBody: document.getElementById("loaded-table-body"),
+          gridHelper: document.getElementById("grid-helper"),
+          shuffleBtn: document.getElementById("shuffle-btn"),
+          swapBtn: document.getElementById("swap-btn"),
+          syncDriver: document.getElementById("sync-driver"),
+          primaryLeftBtn: document.getElementById("primary-left-btn"),
+          primaryRightBtn: document.getElementById("primary-right-btn"),
+          retry: {
+            left: document.getElementById("left-retry-btn"),
+            right: document.getElementById("right-retry-btn"),
+          },
+        };
+
+        const halfThrottleRingPlugin = {
+          id: "halfThrottleRing",
+          afterDraw(chart) {
+            const radial = chart.scales.r;
+            if (!radial) return;
+            const { xCenter, yCenter } = radial;
+            const radius = radial.getDistanceFromCenterForValue(50);
+            const ctx = chart.ctx;
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(xCenter, yCenter, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(255,255,255,0.3)";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.restore();
+          },
+        };
+
+        function sanitizeColor(teamColor) {
+          if (!teamColor) return ACCENT_FALLBACK;
+          const raw = String(teamColor).trim();
+          if (raw.startsWith("#")) return raw;
+          return `#${raw}`;
+        }
+
+        function hexToRgba(hex, alpha) {
+          const clean = hex.replace("#", "");
+          const full =
+            clean.length === 3
+              ? clean
+                  .split("")
+                  .map((c) => c + c)
+                  .join("")
+              : clean;
+          const bigint = parseInt(full, 16);
+          const r = (bigint >> 16) & 255;
+          const g = (bigint >> 8) & 255;
+          const b = bigint & 255;
+          return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        function toIsoNoMs(dateMs) {
+          return new Date(dateMs).toISOString();
+        }
+
+        function formatLapTime(seconds) {
+          if (!Number.isFinite(seconds)) return "--";
+          const mins = Math.floor(seconds / 60);
+          const secs = seconds - mins * 60;
+          return `${mins}:${secs.toFixed(3).padStart(6, "0")}`;
+        }
+
+        function recordKey(sessionKey, driverNumber) {
+          return `${sessionKey}::${driverNumber}`;
+        }
+
+        async function fetchJson(path, params, maxRetries = 16) {
+          const query = new URLSearchParams();
+          Object.entries(params).forEach(([k, v]) => {
+            if (v !== undefined && v !== null) query.append(k, String(v));
+          });
+          const url = `${API_BASE}/${path}?${query.toString()}`;
+
+          return enqueueOpenF1(async () => {
+            for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+              const response = await fetchWithTimeout(url);
+              if (response.ok) {
+                return response.json();
+              }
+              if ((response.status === 429 || response.status === 503) && attempt < maxRetries) {
+                const backoffMs = Math.min(25000, 1200 + attempt * attempt * 1000);
+                await new Promise((resolve) => setTimeout(resolve, backoffMs));
+                continue;
+              }
+              const err = new Error(`API error ${response.status} on ${path}`);
+              err.code = "HTTP";
+              err.status = response.status;
+              err.path = path;
+              throw err;
+            }
+            const err = new Error(`API rate limited or unavailable (${path}). Try Retry shortly.`);
+            err.code = "HTTP";
+            err.status = 429;
+            err.path = path;
+            throw err;
+          });
+        }
+
+        async function getSessions() {
+          if (state.sessions.length) return state.sessions;
+          const sessions = await fetchJson("sessions", {
+            year: 2024,
+            session_name: "Qualifying",
+          });
+          state.sessions = sessions.sort((a, b) => {
+            return String(a.circuit_short_name).localeCompare(String(b.circuit_short_name));
+          });
+          return state.sessions;
+        }
+
+        async function getDrivers(sessionKey) {
+          if (state.driversBySession.has(sessionKey)) {
+            return state.driversBySession.get(sessionKey);
+          }
+          const drivers = await fetchJson("drivers", { session_key: sessionKey });
+          const sorted = drivers.sort((a, b) => a.driver_number - b.driver_number);
+          state.driversBySession.set(sessionKey, sorted);
+          return sorted;
+        }
+
+        /** ---------- Fingerprint ---------- */
+        function pickFastestCleanLap(laps) {
+          const valid = laps.filter(
+            (lap) =>
+              lap &&
+              lap.is_pit_out_lap === false &&
+              lap.lap_duration != null &&
+              Number.isFinite(Number(lap.lap_duration)) &&
+              Number(lap.lap_duration) > 0.5 &&
+              lap.date_start
+          );
+          if (!valid.length) return null;
+          return valid.reduce((best, lap) => {
+            return Number(lap.lap_duration) < Number(best.lap_duration) ? lap : best;
+          });
+        }
+
+        function interpolateThrottle(samples, t) {
+          if (!samples.length) return 0;
+          if (t <= samples[0].t) return samples[0].throttle;
+          if (t >= samples[samples.length - 1].t) return samples[samples.length - 1].throttle;
+
+          let low = 0;
+          let high = samples.length - 1;
+          while (low <= high) {
+            const mid = (low + high) >> 1;
+            if (samples[mid].t < t) low = mid + 1;
+            else high = mid - 1;
+          }
+          const right = samples[Math.min(low, samples.length - 1)];
+          const left = samples[Math.max(0, low - 1)];
+          if (right.t === left.t) return right.throttle;
+          const ratio = (t - left.t) / (right.t - left.t);
+          return left.throttle + ratio * (right.throttle - left.throttle);
+        }
+
+        function resampleTo360(carData, lapStartMs, lapEndMs) {
+          const samples = carData
+            .map((row) => ({
+              t: Date.parse(row.date),
+              throttle: Math.max(0, Math.min(100, Number(row.throttle) || 0)),
+            }))
+            .filter((row) => Number.isFinite(row.t))
+            .sort((a, b) => a.t - b.t);
+
+          if (!samples.length) return [];
+          const duration = lapEndMs - lapStartMs;
+          const step = duration / SAMPLE_POINTS;
+          const dna = [];
+          for (let i = 0; i < SAMPLE_POINTS; i += 1) {
+            const t = lapStartMs + step * i;
+            dna.push(Math.max(0, Math.min(100, interpolateThrottle(samples, t))));
+          }
+          return dna;
+        }
+
+        function cosineSimilarity(a, b) {
+          if (!a || !b || a.length !== SAMPLE_POINTS || b.length !== SAMPLE_POINTS) return null;
+          let dot = 0;
+          let magA = 0;
+          let magB = 0;
+          for (let i = 0; i < SAMPLE_POINTS; i += 1) {
+            dot += a[i] * b[i];
+            magA += a[i] * a[i];
+            magB += b[i] * b[i];
+          }
+          if (magA === 0 || magB === 0) return null;
+          return dot / (Math.sqrt(magA) * Math.sqrt(magB));
+        }
+
+        function similarityColor(similarity) {
+          if (similarity === null || Number.isNaN(similarity)) return "#ffffff";
+          const clamped = Math.max(0, Math.min(1, similarity));
+          const hue = clamped * 120;
+          return `hsl(${hue} 85% 60%)`;
+        }
+
+        function setPanelStatus(panel, message, kind = "info") {
+          const wrap = dom.chartWrap[panel];
+          let status = wrap.querySelector(".panel-status");
+          if (!status) {
+            status = document.createElement("div");
+            status.className = "panel-status";
+            wrap.appendChild(status);
+          }
+          status.textContent = message;
+          status.classList.toggle("error", kind === "error");
+          status.style.display = "block";
+        }
+
+        function hidePanelStatus(panel) {
+          const status = dom.chartWrap[panel].querySelector(".panel-status");
+          if (status) status.style.display = "none";
+        }
+
+        function showSkeleton(panel, show) {
+          const wrap = dom.chartWrap[panel];
+          let ring = wrap.querySelector(".skeleton-ring");
+          if (show) {
+            if (!ring) {
+              ring = document.createElement("div");
+              ring.className = "skeleton-ring";
+              wrap.appendChild(ring);
+            }
+            ring.style.display = "block";
+            const canvas = dom.canvas[panel];
+            canvas.style.visibility = "hidden";
+          } else {
+            if (ring) ring.style.display = "none";
+            dom.canvas[panel].style.visibility = "visible";
+          }
+        }
+
+        /** ---------- Panel pipeline & retry ---------- */
+        function stopPanelElapsed(panel) {
+          const timerId = state.panels[panel].elapsedTimer;
+          if (timerId) {
+            clearInterval(timerId);
+            state.panels[panel].elapsedTimer = null;
+          }
+        }
+
+        function setPipelineStage(panel, stage) {
+          state.panels[panel].loadStage = stage;
+        }
+
+        function setRetryVisible(panel, visible) {
+          if (dom.retry[panel]) dom.retry[panel].hidden = !visible;
+        }
+
+        function startPanelPipeline(panel, stage) {
+          setRetryVisible(panel, false);
+          showSkeleton(panel, true);
+          state.panels[panel].loading = true;
+          setPipelineStage(panel, stage);
+          state.panels[panel].pipelineStartMs = Date.now();
+          stopPanelElapsed(panel);
+          state.panels[panel].elapsedTimer = setInterval(() => {
+            const startMs = state.panels[panel].pipelineStartMs || Date.now();
+            const seconds = ((Date.now() - startMs) / 1000).toFixed(1);
+            const label = state.panels[panel].loadStage || "Loading";
+            setPanelStatus(panel, `${label}… ${seconds}s`, "info");
+          }, 200);
+        }
+
+        function formatLoadError(error) {
+          if (!error) return "Unknown error.";
+          if (error.code === "TIMEOUT") return error.message;
+          if (error.code === "HTTP") {
+            return `Request failed (HTTP ${error.status} on ${error.path}). Try again or pick another session / driver.`;
+          }
+          return `Failed to load data: ${error.message || String(error)}`;
+        }
+
+        async function waitForChartLibs(maxMs = 90000) {
+          const deadline = Date.now() + maxMs;
+          while (Date.now() < deadline) {
+            if (typeof Chart !== "undefined" && typeof d3 !== "undefined") {
+              return;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 50));
+          }
+          throw new Error("Chart.js or D3 failed to load from CDN (check network / cdnjs).");
+        }
+
+        /** ---------- Charts ---------- */
+        function createFingerprintChart(panel, dna, color) {
+          const existing = state.panels[panel].chart;
+          if (existing) existing.destroy();
+
+          /* DNA vectors stay length 360 for cosine similarity; radar renders all points (fine at ~3.7 Hz samples after interp). Decimate only if profiling shows jank. */
+          const labels = Array.from({ length: SAMPLE_POINTS }, (_, i) => i);
+          const chart = new Chart(dom.canvas[panel].getContext("2d"), {
+            type: "radar",
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: "Throttle DNA",
+                  data: dna,
+                  borderColor: color,
+                  backgroundColor: hexToRgba(color, 0.4),
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  fill: true,
+                },
+              ],
+            },
+            options: {
+              animation: false,
+              responsive: true,
+              maintainAspectRatio: false,
+              elements: {
+                line: {
+                  tension: 0.12,
+                },
+              },
+              plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false },
+              },
+              scales: {
+                r: {
+                  beginAtZero: true,
+                  min: 0,
+                  max: 100,
+                  ticks: { display: false },
+                  pointLabels: { display: false },
+                  angleLines: { display: false },
+                  grid: { display: false },
+                },
+              },
+            },
+          });
+          state.panels[panel].chart = chart;
+        }
+
+        function renderDifferenceChart(leftDna, rightDna) {
+          const root = d3.select(dom.diffChart);
+          root.selectAll("*").remove();
+          const width = dom.diffChart.clientWidth || 320;
+          const height = dom.diffChart.clientHeight || 320;
+          const centerX = width / 2;
+          const centerY = height / 2;
+          const maxRadius = Math.min(width, height) * 0.42;
+
+          const svg = root.append("svg").attr("viewBox", `0 0 ${width} ${height}`);
+          svg
+            .append("circle")
+            .attr("cx", centerX)
+            .attr("cy", centerY)
+            .attr("r", maxRadius * 0.5)
+            .attr("fill", "none")
+            .attr("stroke", "rgba(255,255,255,0.22)")
+            .attr("stroke-width", 1);
+
+          if (!leftDna || !rightDna) {
+            svg
+              .append("text")
+              .attr("x", centerX)
+              .attr("y", centerY)
+              .attr("text-anchor", "middle")
+              .attr("fill", "#8b93a6")
+              .attr("font-size", 13)
+              .text("Load both panels to view differences");
+            return;
+          }
+
+          const diff = leftDna.map((value, i) => Math.abs(value - rightDna[i]));
+          const maxDiff = Math.max(1, ...diff);
+          const radial = d3.scaleLinear().domain([0, 100]).range([0, maxRadius]);
+
+          const line = d3
+            .lineRadial()
+            .angle((_, i) => (i / SAMPLE_POINTS) * Math.PI * 2)
+            .radius((d) => radial(d))
+            .curve(d3.curveCardinalClosed.tension(0.75));
+
+          const redStrength = Math.min(1, maxDiff / 100);
+          const fillColor = d3.interpolateRgb("#ffb1b1", "#ff1736")(redStrength);
+          const strokeColor = d3.interpolateRgb("#ff8888", "#ff001f")(redStrength);
+
+          const group = svg
+            .append("g")
+            .attr("transform", `translate(${centerX},${centerY}) rotate(-90)`);
+
+          group
+            .append("path")
+            .datum(diff)
+            .attr("d", line)
+            .attr("fill", d3.color(fillColor).copy({ opacity: 0.45 }))
+            .attr("stroke", strokeColor)
+            .attr("stroke-width", 1.3);
+        }
+
+        function renderDiffPeakDegrees(leftDna, rightDna) {
+          const el = dom.diffPeaks;
+          if (!el) return;
+          if (!leftDna || !rightDna) {
+            el.textContent = "";
+            return;
+          }
+          const ranked = leftDna.map((value, degree) => ({
+            degree,
+            delta: Math.abs(value - rightDna[degree]),
+          }));
+          ranked.sort((a, b) => b.delta - a.delta);
+          const top = ranked.slice(0, 5);
+          el.textContent = `Largest deltas: ${top.map((item) => `${item.degree}° (${item.delta.toFixed(1)})`).join(", ")}`;
+        }
+
+        /** ---------- UI / grid ---------- */
+        function updateCenterViews() {
+          const left = state.panels.left.data;
+          const right = state.panels.right.data;
+          const similarity = left && right ? cosineSimilarity(left.dna, right.dna) : null;
+
+          if (similarity === null) {
+            dom.similarityValue.textContent = "--";
+            dom.similarityValue.style.color = "";
+          } else {
+            const pct = (similarity * 100).toFixed(1);
+            dom.similarityValue.textContent = `${pct}%`;
+            dom.similarityValue.style.color = similarityColor(similarity);
+          }
+          renderDifferenceChart(left ? left.dna : null, right ? right.dna : null);
+          renderDiffPeakDegrees(left ? left.dna : null, right ? right.dna : null);
+          renderSimilarityGrid();
+        }
+
+        function syncSecondaryDriverIfEnabled(sourcePanel, driverNumber) {
+          if (!dom.syncDriver || !dom.syncDriver.checked) return;
+          if (state.primaryPanel !== sourcePanel) return;
+          const secondary = state.primaryPanel === "left" ? "right" : "left";
+          const sessionKey = Number(dom.session[secondary].value);
+          const select = dom.driver[secondary];
+          const optionMatch = [...select.options].some((option) => Number(option.value) === driverNumber);
+          if (!optionMatch) return;
+          if (Number(select.value) === driverNumber) return;
+          select.value = String(driverNumber);
+          loadPanelBySelection(secondary, sessionKey, driverNumber);
+        }
+
+        function upsertLoadedRecord(record) {
+          const idx = state.loadedRecords.findIndex((r) => r.id === record.id);
+          if (idx === -1) state.loadedRecords.push(record);
+          else state.loadedRecords[idx] = record;
+        }
+
+        function sortedRecordsWithSimilarity() {
+          const primaryData = state.panels[state.primaryPanel].data;
+          return state.loadedRecords
+            .map((row) => {
+              const sim =
+                primaryData && row.dna ? cosineSimilarity(primaryData.dna, row.dna) : null;
+              return { ...row, similarity: sim };
+            })
+            .sort((a, b) => {
+              const dir = state.sortDir === "asc" ? 1 : -1;
+              switch (state.sortBy) {
+                case "similarity": {
+                  const av = a.similarity === null ? -1 : a.similarity;
+                  const bv = b.similarity === null ? -1 : b.similarity;
+                  return (av - bv) * dir;
+                }
+                case "lapTime":
+                  return ((a.lapTime || Infinity) - (b.lapTime || Infinity)) * dir;
+                case "topSpeed":
+                  return ((a.topSpeed || 0) - (b.topSpeed || 0)) * dir;
+                case "driver":
+                  return a.driverLabel.localeCompare(b.driverLabel) * dir;
+                case "circuit":
+                default:
+                  return a.circuitLabel.localeCompare(b.circuitLabel) * dir;
+              }
+            });
+        }
+
+        function renderSimilarityGrid() {
+          const primary = state.primaryPanel;
+          const secondary = primary === "left" ? "right" : "left";
+          dom.gridHelper.textContent = `Primary panel: ${primary}. Click any row to load it into ${secondary}.`;
+
+          const rows = sortedRecordsWithSimilarity();
+          dom.tableBody.innerHTML = "";
+          rows.forEach((row) => {
+            const tr = document.createElement("tr");
+            tr.dataset.id = row.id;
+            const similarityCell =
+              row.similarity === null
+                ? `<span class="helper">--</span>`
+                : `<span class="pill" style="background: rgba(255,255,255,0.08); color: ${similarityColor(row.similarity)}">${(row.similarity * 100).toFixed(1)}%</span>`;
+            tr.innerHTML = `
+              <td>${similarityCell}</td>
+              <td>${row.circuitLabel}</td>
+              <td>${row.driverLabel}</td>
+              <td>${formatLapTime(row.lapTime)}</td>
+              <td>${Number.isFinite(row.topSpeed) ? `${Math.round(row.topSpeed)} km/h` : "--"}</td>
+              <td>${row.sessionLabel}</td>
+            `;
+            tr.addEventListener("click", () => {
+              const targetPanel = state.primaryPanel === "left" ? "right" : "left";
+              loadPanelBySelection(targetPanel, row.sessionKey, row.driverNumber);
+            });
+            dom.tableBody.appendChild(tr);
+          });
+        }
+
+        function updatePrimaryButtons() {
+          dom.primaryLeftBtn.classList.toggle("active", state.primaryPanel === "left");
+          dom.primaryRightBtn.classList.toggle("active", state.primaryPanel === "right");
+          renderSimilarityGrid();
+        }
+
+        function setPanelStats(panel, payload) {
+          if (!payload) {
+            dom.circuit[panel].textContent = "--";
+            dom.lap[panel].textContent = "Lap: --";
+            dom.speed[panel].textContent = "Top speed: --";
+            return;
+          }
+          dom.circuit[panel].textContent = `${payload.circuitLabel} • ${payload.driverLabel}`;
+          dom.lap[panel].textContent = `Lap: ${formatLapTime(payload.lapTime)}`;
+          dom.speed[panel].textContent = Number.isFinite(payload.topSpeed)
+            ? `Top speed: ${Math.round(payload.topSpeed)} km/h`
+            : "Top speed: --";
+        }
+
+        async function buildFingerprint(panel, sessionKey, driverNumber) {
+          const cacheKey = recordKey(sessionKey, driverNumber);
+          if (state.dnaByPair.has(cacheKey)) return state.dnaByPair.get(cacheKey);
+
+          setPipelineStage(panel, "Laps");
+          const [laps, drivers] = await Promise.all([
+            fetchJson("laps", { session_key: sessionKey, driver_number: driverNumber }),
+            getDrivers(sessionKey),
+          ]);
+          const fastestLap = pickFastestCleanLap(laps);
+          if (!fastestLap) {
+            return { error: "no-clean-lap" };
+          }
+
+          const lapStartMs = Date.parse(fastestLap.date_start);
+          const lapDurationSec = Number(fastestLap.lap_duration);
+          const lapEndMs = lapStartMs + lapDurationSec * 1000;
+
+          setPipelineStage(panel, "Telemetry");
+          const telemetry = await fetchJson("car_data", {
+            session_key: sessionKey,
+            driver_number: driverNumber,
+            "date>": toIsoNoMs(lapStartMs),
+            "date<": toIsoNoMs(lapEndMs),
+          });
+
+          if (!telemetry.length) {
+            return { error: "telemetry-empty" };
+          }
+
+          const dna = resampleTo360(telemetry, lapStartMs, lapEndMs);
+          if (!dna.length) return { error: "telemetry-empty" };
+
+          const sessionObj = state.sessions.find((s) => String(s.session_key) === String(sessionKey));
+          const driverObj = drivers.find((d) => Number(d.driver_number) === Number(driverNumber));
+
+          const payload = {
+            id: cacheKey,
+            sessionKey,
+            driverNumber,
+            circuitLabel: sessionObj
+              ? `${sessionObj.circuit_short_name} (${sessionObj.country_name})`
+              : `Session ${sessionKey}`,
+            sessionLabel: sessionObj
+              ? `${sessionObj.circuit_short_name} ${sessionObj.session_name || "Qualifying"}`
+              : String(sessionKey),
+            driverLabel: driverObj
+              ? `${driverObj.name_acronym || "DRV"} #${driverObj.driver_number}`
+              : `Driver #${driverNumber}`,
+            teamColor: sanitizeColor(driverObj ? driverObj.team_colour : ACCENT_FALLBACK),
+            lapTime: lapDurationSec,
+            topSpeed: Math.max(...telemetry.map((t) => Number(t.speed) || 0)),
+            dna,
+          };
+          state.dnaByPair.set(cacheKey, payload);
+          return payload;
+        }
+
+        async function populateDriverSelect(panel, sessionKey, preferredDriver, usePipeline = false) {
+          const select = dom.driver[panel];
+          select.disabled = true;
+          select.innerHTML = `<option>Loading drivers...</option>`;
+
+          if (usePipeline) {
+            startPanelPipeline(panel, "Drivers");
+          }
+
+          try {
+            const drivers = await getDrivers(sessionKey);
+            if (!drivers.length) {
+              select.innerHTML = `<option value="">No drivers found</option>`;
+              if (usePipeline) {
+                stopPanelElapsed(panel);
+                state.panels[panel].loading = false;
+                state.panels[panel].loadStage = null;
+                state.panels[panel].pipelineStartMs = null;
+                showSkeleton(panel, false);
+                setPanelStatus(panel, "No drivers found for this session.", "error");
+                setRetryVisible(panel, true);
+              }
+              return null;
+            }
+            select.innerHTML = drivers
+              .map((d) => {
+                const name = d.name_acronym || `#${d.driver_number}`;
+                return `<option value="${d.driver_number}">${name} #${d.driver_number}</option>`;
+              })
+              .join("");
+            const defaultDriver = drivers.find(
+              (d) => Number(d.driver_number) === Number(preferredDriver)
+            );
+            select.value = String(defaultDriver ? defaultDriver.driver_number : drivers[0].driver_number);
+            select.disabled = false;
+            return Number(select.value);
+          } catch (error) {
+            if (usePipeline) {
+              stopPanelElapsed(panel);
+              state.panels[panel].loading = false;
+              state.panels[panel].loadStage = null;
+              state.panels[panel].pipelineStartMs = null;
+              showSkeleton(panel, false);
+              setPanelStatus(panel, formatLoadError(error), "error");
+              setRetryVisible(panel, true);
+            }
+            throw error;
+          } finally {
+            if (usePipeline) {
+              stopPanelElapsed(panel);
+              state.panels[panel].loadStage = null;
+            }
+          }
+        }
+
+        async function loadPanelBySelection(panel, sessionKey, driverNumber) {
+          const sk = Number(sessionKey);
+          const dn = Number(driverNumber);
+
+          setRetryVisible(panel, false);
+          stopPanelElapsed(panel);
+
+          state.panels[panel].sessionKey = sk;
+          state.panels[panel].driverNumber = dn;
+
+          const cacheKey = recordKey(sk, dn);
+          if (state.dnaByPair.has(cacheKey)) {
+            state.panels[panel].loading = false;
+            state.panels[panel].loadStage = null;
+            state.panels[panel].pipelineStartMs = null;
+            showSkeleton(panel, false);
+            hidePanelStatus(panel);
+            const data = state.dnaByPair.get(cacheKey);
+            createFingerprintChart(panel, data.dna, data.teamColor);
+            setPanelStats(panel, data);
+            state.panels[panel].data = data;
+            upsertLoadedRecord(data);
+            updateCenterViews();
+            return;
+          }
+
+          startPanelPipeline(panel, "Laps");
+          setPanelStats(panel, null);
+
+          try {
+            const data = await buildFingerprint(panel, sk, dn);
+
+            if (data.error === "no-clean-lap") {
+              state.panels[panel].data = null;
+              setPanelStatus(panel, "No clean lap found (all laps are pit-out).", "error");
+              setRetryVisible(panel, true);
+              return;
+            }
+            if (data.error === "telemetry-empty") {
+              state.panels[panel].data = null;
+              setPanelStatus(
+                panel,
+                "Telemetry unavailable for this session. Try a different driver.",
+                "error"
+              );
+              setRetryVisible(panel, true);
+              return;
+            }
+
+            createFingerprintChart(panel, data.dna, data.teamColor);
+            setPanelStats(panel, data);
+            state.panels[panel].data = data;
+            upsertLoadedRecord(data);
+            hidePanelStatus(panel);
+          } catch (error) {
+            state.panels[panel].data = null;
+            setPanelStatus(panel, formatLoadError(error), "error");
+            setRetryVisible(panel, true);
+          } finally {
+            stopPanelElapsed(panel);
+            state.panels[panel].loading = false;
+            state.panels[panel].loadStage = null;
+            state.panels[panel].pipelineStartMs = null;
+            showSkeleton(panel, false);
+            updateCenterViews();
+          }
+        }
+
+        function findSessionByCircuit(name) {
+          const lowered = name.toLowerCase();
+          const exact = state.sessions.find(
+            (s) => String(s.circuit_short_name || "").toLowerCase() === lowered
+          );
+          if (exact) return exact;
+          return state.sessions.find((s) =>
+            String(s.circuit_short_name || "").toLowerCase().includes(lowered)
+          );
+        }
+
+        async function setPanelSession(panel, sessionKey, preferredDriver = null) {
+          dom.session[panel].value = String(sessionKey);
+          const chosenDriver = await populateDriverSelect(
+            panel,
+            Number(sessionKey),
+            preferredDriver,
+            true
+          );
+          if (chosenDriver !== null) {
+            await loadPanelBySelection(panel, Number(sessionKey), Number(chosenDriver));
+          }
+        }
+
+        function wireSortControls() {
+          document.querySelectorAll("th button[data-sort]").forEach((button) => {
+            button.addEventListener("click", () => {
+              const nextSort = button.dataset.sort;
+              if (state.sortBy === nextSort) {
+                state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+              } else {
+                state.sortBy = nextSort;
+                state.sortDir = nextSort === "lapTime" ? "asc" : "desc";
+              }
+              renderSimilarityGrid();
+            });
+          });
+        }
+
+        async function setupSessionSelectors() {
+          const sessions = await getSessions();
+          const options = sessions
+            .map(
+              (s) =>
+                `<option value="${s.session_key}">${s.circuit_short_name} • ${s.country_name} (${s.session_name})</option>`
+            )
+            .join("");
+          dom.session.left.innerHTML = options;
+          dom.session.right.innerHTML = options;
+
+          for (const panel of ["left", "right"]) {
+            dom.session[panel].addEventListener("change", async (event) => {
+              const sessionKey = Number(event.target.value);
+              const driver = await populateDriverSelect(panel, sessionKey, null, true);
+              if (driver !== null) {
+                loadPanelBySelection(panel, sessionKey, driver);
+                syncSecondaryDriverIfEnabled(panel, driver);
+              }
+            });
+
+            dom.driver[panel].addEventListener("change", (event) => {
+              const sessionKey = Number(dom.session[panel].value);
+              const driver = Number(event.target.value);
+              loadPanelBySelection(panel, sessionKey, driver);
+              syncSecondaryDriverIfEnabled(panel, driver);
+            });
+          }
+        }
+
+        async function swapPanels() {
+          const leftSessionKey = dom.session.left.value;
+          const leftDriverNum = dom.driver.left.value;
+          const rightSessionKey = dom.session.right.value;
+          const rightDriverNum = dom.driver.right.value;
+
+          dom.session.left.value = String(rightSessionKey);
+          dom.session.right.value = String(leftSessionKey);
+
+          await populateDriverSelect("left", Number(rightSessionKey), Number(rightDriverNum), false);
+          await populateDriverSelect("right", Number(leftSessionKey), Number(leftDriverNum), false);
+
+          await loadPanelBySelection("left", Number(rightSessionKey), Number(rightDriverNum));
+          await loadPanelBySelection("right", Number(leftSessionKey), Number(leftDriverNum));
+        }
+
+        async function shufflePanels() {
+          if (state.sessions.length < 2) return;
+          const indexes = new Set();
+          while (indexes.size < 2) {
+            indexes.add(Math.floor(Math.random() * state.sessions.length));
+          }
+          const [leftIndex, rightIndex] = [...indexes];
+          const leftSession = state.sessions[leftIndex];
+          const rightSession = state.sessions[rightIndex];
+
+          const [leftDrivers, rightDrivers] = await Promise.all([
+            getDrivers(leftSession.session_key),
+            getDrivers(rightSession.session_key),
+          ]);
+
+          const leftDriver = leftDrivers.find((d) => d.driver_number === 16) || leftDrivers[0];
+          const rightDriver = rightDrivers.find((d) => d.driver_number === 16) || rightDrivers[0];
+
+          await setPanelSession("left", leftSession.session_key, leftDriver.driver_number);
+          await setPanelSession("right", rightSession.session_key, rightDriver.driver_number);
+        }
+
+        /** ---------- Bootstrap ---------- */
+        async function bootWithThesisPair() {
+          startPanelPipeline("left", "Sessions");
+          startPanelPipeline("right", "Sessions");
+          try {
+            await setupSessionSelectors();
+          } finally {
+            ["left", "right"].forEach((panel) => {
+              stopPanelElapsed(panel);
+              state.panels[panel].loading = false;
+              state.panels[panel].loadStage = null;
+              state.panels[panel].pipelineStartMs = null;
+              showSkeleton(panel, false);
+              hidePanelStatus(panel);
+            });
+          }
+
+          const monaco = findSessionByCircuit("Monaco") || findSessionByCircuit("Monte Carlo");
+          const monza = findSessionByCircuit("Monza");
+
+          if (!monaco || !monza) {
+            const fallbackLeft = state.sessions[0];
+            const fallbackRight = state.sessions[1] || state.sessions[0];
+            await setPanelSession("left", fallbackLeft.session_key, 16);
+            await setPanelSession("right", fallbackRight.session_key, 16);
+            return;
+          }
+
+          await setPanelSession("left", monaco.session_key, 16);
+          await setPanelSession("right", monza.session_key, 16);
+        }
+
+        function wireButtons() {
+          dom.primaryLeftBtn.addEventListener("click", () => {
+            state.primaryPanel = "left";
+            updatePrimaryButtons();
+            updateCenterViews();
+          });
+          dom.primaryRightBtn.addEventListener("click", () => {
+            state.primaryPanel = "right";
+            updatePrimaryButtons();
+            updateCenterViews();
+          });
+          dom.shuffleBtn.addEventListener("click", () => {
+            shufflePanels();
+          });
+          if (dom.swapBtn) {
+            dom.swapBtn.addEventListener("click", () => {
+              swapPanels().catch((error) => {
+                appendDebugEntry({ swap_panel_error: error.message || String(error) });
+              });
+            });
+          }
+          if (dom.retry.left) {
+            dom.retry.left.addEventListener("click", () => {
+              loadPanelBySelection(
+                "left",
+                Number(dom.session.left.value),
+                Number(dom.driver.left.value)
+              );
+            });
+          }
+          if (dom.retry.right) {
+            dom.retry.right.addEventListener("click", () => {
+              loadPanelBySelection(
+                "right",
+                Number(dom.session.right.value),
+                Number(dom.driver.right.value)
+              );
+            });
+          }
+        }
+
+        async function init() {
+          await waitForChartLibs();
+          Chart.register(halfThrottleRingPlugin);
+          if (isDebugMode()) {
+            appendDebugEntry({ note: "Circuit DNA debug log (debug=1)" });
+          }
+          wireButtons();
+          wireSortControls();
+          updatePrimaryButtons();
+          renderDifferenceChart(null, null);
+          await bootWithThesisPair();
+          updateCenterViews();
+        }
+
+        init().catch((error) => {
+          const panels = ["left", "right"];
+          panels.forEach((panel) => {
+            stopPanelElapsed(panel);
+            showSkeleton(panel, false);
+            setPanelStatus(panel, `Startup failed: ${formatLoadError(error)}`, "error");
+            setRetryVisible(panel, true);
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

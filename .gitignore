@@ -1,0 +1,10 @@
+# Headless verification screenshots (regenerate with scripts/verify_headless.py)
+docs/headless-*.png
+
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.python-version
